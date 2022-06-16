@@ -13,7 +13,7 @@ import sympy.core.numbers
 from sympy import *
 
 
-class Expression:
+class RandomExpression:
     """
     dictionary of operations with their corresponding arity as keys
     """
@@ -74,20 +74,6 @@ class Expression:
         '**': 1,
     }
     """
-    maps sympy functions to ones contained in this class
-    """
-    _from_sympy = {
-        sin: 'sin',
-        cos: 'cos',
-        tan: 'tan',
-        exp: 'exp',
-        log: 'log',
-
-        Add: '+',
-        Mul: '*',
-        Pow: '**',
-    }
-    """
       Generates a numpy array representing counts of possible trees of n internal nodes generated from e empty nodes
       D(0, n) = 0
       D(e, 0) = L ** e
@@ -96,7 +82,7 @@ class Expression:
       from Appendix C.2 of DEEP LEARNING FOR SYMBOLIC MATHEMATICS (Guillaume Lample, Francois Charton 2019)
     """
 
-    def _unary_binary_dist(self, size):
+    def _gen_unary_binary_dist(self, size):
 
         # generating transposed version
         D = np.zeros((size * 2 + 1, size))
@@ -148,43 +134,13 @@ class Expression:
             return 'x'
         return random.randrange(0, 10)
 
-    def _gen_from_sympy(self, expr):
-        self._rep = []
-        stack = [expr]
-        while (len(stack) != 0):
-            expr = stack.pop()
-            # print(expr, self._rep)
-            if isinstance(expr, Symbol):
-                self._rep.append(str(expr))
-            elif isinstance(expr, Integer):
-                self._rep.append(str(expr))
-            elif isinstance(expr, Rational):
-                self._rep.append('/')
 
-                args = str(expr).split('/')
-                self._rep.append(str(args[0]))
-                self._rep.append(str(args[1]))
-            elif expr == E:
-                self._rep.append('e')
-            elif expr == pi:
-                self._rep.append('pi')
-            elif expr == I:
-                self._rep.append('i')
-
-
-            else:
-                for i in range(len(expr.args) - 1):
-                    self._rep.append(self._from_sympy[type(expr)])
-
-                for item in expr.args:
-                    stack.append(item)
-
-    def _gen_random(self, num_ops):
+    def _reset(self, num_ops):
         self._num_leaves = 1
         self._num_bin_ops = len(self._bin_op_probs.keys())
         self._num_unary_ops = len(self._unary_op_probs.keys())
 
-        self._unary_binary_dist = self._unary_binary_dist(num_ops + 1)
+        self._unary_binary_dist = self._gen_unary_binary_dist(num_ops + 1)
 
         self._bin_op_norm_prob = np.fromiter(self._bin_op_probs.values(), dtype=float)
         self._bin_op_norm_prob /= self._bin_op_norm_prob.sum()
@@ -232,13 +188,14 @@ class Expression:
             if (rep[i] is None):
                 rep[i] = self._choose_leaf()
         self._rep = rep
+    def is_positive(self):
+        pass
+    def __init__(self, num_ops, needs_histogram=True, assert_positive_on_0_1=True):
+        self._reset(num_ops)
+        if needs_histogram:
+            while self.get_histogram() is None:
+                self._reset(num_ops)
 
-    def __init__(self, expr=None, num_ops=None):
-
-        if (expr is not None):
-            self._gen_from_sympy(expr)
-        else:
-            self._gen_random(num_ops)
 
     def to_infix(self):
         stack = []
@@ -277,6 +234,6 @@ class Expression:
         return ret[1:]
 
 def main():
-    expr = Expression(num_ops=5)
-    print(expr.get_histogram())
+    expr = RandomExpression(num_ops=5)
+    print(expr.get_sympy(), expr.get_histogram())
 main()
