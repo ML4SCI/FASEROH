@@ -190,11 +190,14 @@ class RandomExpression:
         self._rep = rep
     def is_positive(self):
         pass
-    def __init__(self, num_ops, needs_histogram=True, assert_positive_on_0_1=True):
+        return True
+    def __init__(self, num_ops, needs_histogram=True, assert_positive=False):
         self._reset(num_ops)
         if needs_histogram:
             while self.get_histogram() is None:
                 self._reset(num_ops)
+        if assert_positive:
+            raise NotImplementedError
 
 
     def to_infix(self):
