@@ -11,6 +11,7 @@ import random
 import numpy as np
 import sympy.core.numbers
 from sympy import *
+import csv
 
 
 class RandomExpression:
@@ -30,7 +31,6 @@ class RandomExpression:
         '-': 2,
         '*': 2,
         '/': 2,
-        '**': 2,
     }
 
     """
@@ -49,7 +49,6 @@ class RandomExpression:
         '-': lambda args: f'({args[0]})-({args[1]})',
         '*': lambda args: f'({args[0]})*({args[1]})',
         '/': lambda args: f'({args[0]})/({args[1]})',
-        '**': lambda args: f'({args[0]})**({args[1]})'
     }
     """
     unnormalized probabilities of each unary op
@@ -71,7 +70,6 @@ class RandomExpression:
         '-': 3,
         '*': 2,
         '/': 2,
-        '**': 1,
     }
     """
       Generates a numpy array representing counts of possible trees of n internal nodes generated from e empty nodes
@@ -132,7 +130,7 @@ class RandomExpression:
     def _choose_leaf(self):
         if random.random() < 0.3:
             return 'x'
-        return random.randrange(0, 10)
+        return random.randrange(0, 5)
 
 
     def _reset(self, num_ops):
@@ -235,8 +233,43 @@ class RandomExpression:
             if type(ret[i]) != sympy.core.numbers.Float:
                 return None
         return ret[1:]
+def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', path_hist='hist.csv'):
+    with open(path_funcs, "w", newline="") as funcs:
+        with open(path_hist, "w", newline="") as hist:
+            funcs_wrtr = csv.writer(funcs)
+            hist_wrtr = csv.writer(hist)
+            for i in range(items):
+                expr = RandomExpression(num_ops=num_ops)
 
+                funcs_wrtr.writerow(expr.get_rep())
+                hist_wrtr.writerow(expr.get_histogram(interval=interval, bins=bins))
+
+
+"""
+#for testing puproses; ignore
 def main():
     expr = RandomExpression(num_ops=5)
     print(expr.get_sympy(), expr.get_histogram())
+    from numpy import linspace
+    from sympy import lambdify
+    import matplotlib.pyplot as plt
+
+    lam_x = lambdify(Symbol('x'), expr.get_sympy(), modules=['numpy'])
+
+    x_vals = linspace(0, 1, 100)
+    y_vals = lam_x(x_vals)
+
+    print(x_vals, y_vals)
+    print(type(y_vals))
+    if type(y_vals) != np.ndarray:
+        y_vals = np.full(x_vals.shape, y_vals)
+    plt.plot(x_vals, y_vals)
+
+    intervals = [0,0.2,0.4,0.6,0.8,1]
+    hist=list(map(lambda x: x * 5, expr.get_histogram()))
+    plt.hist(intervals[:-1], bins=intervals, weights=hist, density=False)
+
+    plt.show()
 main()
+"""
+gen_dataset(5,20)
