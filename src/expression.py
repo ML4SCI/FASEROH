@@ -71,9 +71,6 @@ class RandomExpression:
         '*': 2,
         '/': 2,
     }
-    @staticmethod
-    def get_vocab():
-        r
     """
       Generates a numpy array representing counts of possible trees of n internal nodes generated from e empty nodes
       D(0, n) = 0
@@ -251,13 +248,16 @@ def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', 
             hist_wrtr = csv.writer(hist)
             for i in range(items):
                 expr = RandomExpression(num_ops=num_ops)
-
+                print('s')
+                print(i, expr.to_infix())
                 funcs_wrtr.writerow(expr.get_rep())
                 hist_wrtr.writerow(noise_fnc(expr.get_histogram(interval=interval, bins=bins)))
+                print('e')
 
 
 
-#for testing puproses; ignore
+"""
+#for testing purposes; ignore
 def main():
     expr = RandomExpression(num_ops=5)
     print(expr.get_sympy(), expr.get_histogram(), add_noise(expr.get_histogram()))
@@ -283,3 +283,5 @@ def main():
     plt.show()
 #main()
 #gen_dataset(5,20)
+"""
+gen_dataset(5,20)
