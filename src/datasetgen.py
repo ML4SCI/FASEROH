@@ -8,4 +8,4 @@ parser.add_argument('--path_funcs', type=str, default='funcs.csv')
 parser.add_argument('--path_hist', type=str, default='hist.csv')
 args = parser.parse_args()
 
-expression.gen_dataset(args.num_ops, args.items)
+expression.gen_dataset(args.num_ops, args.items, (0,1), args.bins, args.path_funcs, args.path_hist)
