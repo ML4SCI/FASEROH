@@ -12,8 +12,19 @@ import numpy as np
 import sympy.core.numbers
 from sympy import *
 import csv
+import signal
 
-
+#from https://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
+class Timer:
+    def __init__(self, seconds):
+        self.seconds = seconds
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError('timeout')
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
 class RandomExpression:
     """
     dictionary of operations with their corresponding arity as keys
@@ -31,6 +42,7 @@ class RandomExpression:
         '-': 2,
         '*': 2,
         '/': 2,
+        '**': 2,
     }
 
     """
@@ -49,6 +61,7 @@ class RandomExpression:
         '-': lambda args: f'({args[0]})-({args[1]})',
         '*': lambda args: f'({args[0]})*({args[1]})',
         '/': lambda args: f'({args[0]})/({args[1]})',
+        '**': lambda args: f'({args[0]})**({args[1]})'
     }
     """
     unnormalized probabilities of each unary op
@@ -71,9 +84,17 @@ class RandomExpression:
         '*': 2,
         '/': 2,
     }
-    @staticmethod
-    def get_vocab():
-        r
+    _from_sympy = {
+        sin: 'sin',
+        cos: 'cos',
+        tan: 'tan',
+        exp: 'exp',
+        log: 'log',
+
+        Add: '+',
+        Mul: '*',
+        Pow: '**',
+    }
     """
       Generates a numpy array representing counts of possible trees of n internal nodes generated from e empty nodes
       D(0, n) = 0
@@ -196,16 +217,31 @@ class RandomExpression:
             if (rep[i] is None):
                 rep[i] = self._choose_leaf()
         self._rep = rep
+        #print('hello', self.to_infix())
+        try:
+            with Timer(5):
+                expr = self.get_sympy()
+                self._gen_from_sympy(expr)
+        except:
+            self._reset(num_ops)
+        #print('done', self.to_infix())
     def is_positive(self):
         pass
         return True
     def __init__(self, num_ops, needs_histogram=True, assert_positive=False):
         self._reset(num_ops)
+        while not self._rep:
+            self._reset(num_ops)
         if needs_histogram:
-            while self.get_histogram() is None:
+            while not self._rep or self.get_histogram() is None:
                 self._reset(num_ops)
         if assert_positive:
             raise NotImplementedError
+        #print self.get_histogram()
+
+        #print('b', self._rep)
+        #self._gen_from_sympy(self.get_sympy())
+        #print('a', self._rep)
 
 
     def to_infix(self):
@@ -228,11 +264,17 @@ class RandomExpression:
     def get_rep(self):
         return self._rep
     def get_sympy(self):
+        #print('p', self.to_infix())
         return parse_expr(self.to_infix())
     def get_histogram(self, interval=(0,1), bins=5):
         x = Symbol('x')
         f = self.get_sympy()
-        F = integrate(f, Symbol('x'))
+        F = None
+        try:
+            with Timer(5):
+                F = integrate(f, Symbol('x'))
+        except:
+            return None
         ret = []
         dif = interval[1] - interval[0]
         for i in range(0, bins + 1):
@@ -244,6 +286,41 @@ class RandomExpression:
                 return None
         return ret[1:]
 
+    def _gen_from_sympy(self, expr):
+        expr.simplify()
+        #print(expr)
+        self._rep = []
+        stack = [expr]
+        while(len(stack) != 0):
+            expr = stack.pop()
+            #print('i', type(expr), str(expr), expr, self._rep)
+            if isinstance(expr, sympy.core.numbers.ComplexInfinity) or isinstance(expr, sympy.core.numbers.NaN):
+                self._rep = None
+                return
+            if isinstance(expr, Symbol):
+                self._rep.append(str(expr))
+            elif isinstance(expr, Integer):
+                self._rep.append(str(expr))
+            elif isinstance(expr, Rational):
+                self._rep.append('/')
+
+                args = str(expr).split('/')
+                self._rep.append(str(args[0]))
+                self._rep.append(str(args[1]))
+            elif expr == E:
+                self._rep.append('e')
+            elif expr == pi:
+                self._rep.append('pi')
+            elif expr == I:
+                self._rep.append('i')
+            else:
+                for i in range(len(expr.args) - 1):
+                    #print('tp', type(expr))
+                    self._rep.append(self._from_sympy[type(expr)])
+
+                for item in expr.args:
+                    #print('tpp', type(item), item)
+                    stack.append(item)
 def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', path_hist='hist.csv', noise_fnc=lambda x: x):
     with open(path_funcs, "w", newline="") as funcs:
         with open(path_hist, "w", newline="") as hist:
@@ -251,13 +328,18 @@ def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', 
             hist_wrtr = csv.writer(hist)
             for i in range(items):
                 expr = RandomExpression(num_ops=num_ops)
+                print(i, expr.to_infix())
 
-                funcs_wrtr.writerow(expr.get_rep())
+                tmp = ['<SOS>'] + expr.get_rep() + ['<EOS>']
+                tmp += ['<PAD>'] * (num_ops * 4 + 3 - len(tmp))
+                funcs_wrtr.writerow(tmp)
+                #print(noise_fnc(expr.get_histogram(interval=interval, bins=bins)))
                 hist_wrtr.writerow(noise_fnc(expr.get_histogram(interval=interval, bins=bins)))
 
 
 
-#for testing puproses; ignore
+"""
+#for testing purposes; ignore
 def main():
     expr = RandomExpression(num_ops=5)
     print(expr.get_sympy(), expr.get_histogram(), add_noise(expr.get_histogram()))
@@ -283,3 +365,5 @@ def main():
     plt.show()
 #main()
 #gen_dataset(5,20)
+"""
+#gen_dataset(5,1000)
