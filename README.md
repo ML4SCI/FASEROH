@@ -3,6 +3,7 @@ Fast Accurate Empirical Representation of Histograms (FASEROH) is a project with
 
 ## Generating Datasets
 To generate datasets call `datasetgen.py`. It generates two csv files one for the histogram data and one for the functions in prefix notation.
+
 Optional Parameters:
 
 - `--path_hist` type:str
@@ -38,6 +39,7 @@ Optional Parameters:
 
 ## Training the model
 To train a model use `train.py`
+
 Optional Parameters:
 
 - `--path_hist` type:str
