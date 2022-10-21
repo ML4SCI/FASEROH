@@ -6,6 +6,7 @@ from model import *
 import torch
 from dataset import *
 from tqdm import tqdm
+import argparse
 
 
 """hist, funcs = pd.read_csv('./hist.csv', header = None).astype('float'), pd.read_csv('./funcs.csv', header = None)
@@ -76,7 +77,10 @@ def test_epoch_transformer(model, test_loader, criterion, batch_size):
 
       loss = criterion(logits.flatten(start_dim=0, end_dim=1), tgt.flatten())
 
-
+      """if torch.isnan(loss):
+          print(logits)
+          print(tgt)
+          print(loss)"""
       total_loss += loss.item()
       total_items += (tgt != 0).sum(dim=(0,1))
 
@@ -95,13 +99,24 @@ def train(model, train_dataset, test_dataset, batch_size=8, epochs=100):
         print(
             f'Epoch: {e + 1} Training Loss: {train_loss} Training Accuracy: {train_acc} Test Loss: {test_loss} Test Accuracy: {test_acc}')
 
-ds = Dataset('../hist.csv', '../funcs.csv')
+parser = argparse.ArgumentParser(description='Trains a transformer on histogram and expression data')
+parser.add_argument('--path_hist', type=str, default='hist.csv')
+parser.add_argument('--path_funcs', type=str, default='funcs.csv')
+parser.add_argument('--encoder_layers', type=int, default=3)
+parser.add_argument('--decoder_layers', type=int, default=3)
+parser.add_argument('--num_heads', type=int, default=32)
+parser.add_argument('--emb_size', type=int, default=128)
+parser.add_argument('--dim_feedforward', type=int, default=2048)
+parser.add_argument('--dropout', type=float, default=0.1)
+args = parser.parse_args()
+
+ds = Dataset(args.path_hist, args.path_funcs)
 train_idx = list(range(0, int(9 * len(ds) / 10)))
 test_idx = list(range(int(9 * len(ds) / 10), len(ds)))
 train_dataset = torch.utils.data.Subset(ds, train_idx)
 test_dataset = torch.utils.data.Subset(ds, test_idx)
-model = TransformerModel(num_encoder_layers=3, nhead=32, num_decoder_layers=3,
-                 emb_size=128, hist_bins=5, tgt_vocab_size=len(ds.get_alphabet()),
-                 dim_feedforward= 2048, dropout = 0.1)
+model = TransformerModel(num_encoder_layers=args.encoder_layers, nhead=args.num_heads, num_decoder_layers=args.decoder_layers,
+                 emb_size=args.emb_size, hist_bins=5, tgt_vocab_size=len(ds.get_alphabet()),
+                 dim_feedforward=args.dim_feedforward, dropout=args.dropout)
 train(model, train_dataset, test_dataset)
 

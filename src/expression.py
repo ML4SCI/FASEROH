@@ -226,17 +226,21 @@ class RandomExpression:
             self._reset(num_ops)
         #print('done', self.to_infix())
     def is_positive(self):
-        pass
+        hist = self.get_histogram()
+        for x in hist:
+            if x < 0:
+                return False
         return True
-    def __init__(self, num_ops, needs_histogram=True, assert_positive=False):
+    def __init__(self, num_ops, needs_histogram=True, assert_positive=True):
         self._reset(num_ops)
         while not self._rep:
             self._reset(num_ops)
         if needs_histogram:
-            while not self._rep or self.get_histogram() is None:
+            while (not self._rep) or (self.get_histogram() is None):
                 self._reset(num_ops)
         if assert_positive:
-            raise NotImplementedError
+            while not self.is_positive():
+                self._reset(num_ops)
         #print self.get_histogram()
 
         #print('b', self._rep)
@@ -321,7 +325,11 @@ class RandomExpression:
                 for item in expr.args:
                     #print('tpp', type(item), item)
                     stack.append(item)
-def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', path_hist='hist.csv', noise_fnc=lambda x: x):
+def poisson(x):
+    x = np.array(x,dtype=float)
+    x = np.random.poisson(lam=x,size=None)
+    return x.tolist()
+def gen_dataset(num_ops, items, interval=(0,1), bins=5, path_funcs='funcs.csv', path_hist='hist.csv', noise_fnc=poisson):
     with open(path_funcs, "w", newline="") as funcs:
         with open(path_hist, "w", newline="") as hist:
             funcs_wrtr = csv.writer(funcs)
