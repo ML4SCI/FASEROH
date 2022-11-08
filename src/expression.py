@@ -42,7 +42,7 @@ class RandomExpression:
         '-': 2,
         '*': 2,
         '/': 2,
-        '**': 2,
+        '**': 2
     }
 
     """
@@ -82,7 +82,7 @@ class RandomExpression:
         '+': 3,
         '-': 3,
         '*': 2,
-        '/': 2,
+        '/': 2
     }
     _from_sympy = {
         sin: 'sin',
@@ -93,7 +93,7 @@ class RandomExpression:
 
         Add: '+',
         Mul: '*',
-        Pow: '**',
+        Pow: '**'
     }
     """
       Generates a numpy array representing counts of possible trees of n internal nodes generated from e empty nodes
