@@ -20,7 +20,6 @@ class SymbolicExpressionDataset:
 
 @dataclass
 class GeneralDataset(SymbolicExpressionDataset):
-    points_range: Tuple[float, float] = (-5, 5)
     num_sample_points: int = 200
     max_num_ops: int = 10
     num_variables: int = 1
@@ -41,7 +40,6 @@ class GeneralDataset(SymbolicExpressionDataset):
         gen = generate_random_expression(
             rng,
             n_points=self.num_sample_points,
-            sampled_points_range=self.points_range,
             max_num_ops=self.max_num_ops,
             variables=variables,
         )

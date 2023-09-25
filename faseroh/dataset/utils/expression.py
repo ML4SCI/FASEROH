@@ -8,10 +8,9 @@ import numpy as np
 import sympy
 from sympy import expand
 from scipy.stats import poisson
-
+from scipy import integrate
 from ..tokenizers import GeneralTermTokenizer
-from . import generate_all_possible_ranges, timeout, TimeoutError
-from .sympy_functions import evaluate_points, expr_to_func
+from . import timeout, TimeoutError
 from .tree import convert_to_binary_tree, prefix_to_infix, Tree
 
 
@@ -262,15 +261,23 @@ def check_positivity(expression, bin_width, n_bins):
   except Exception:
     raise RuntimeWarning
   
-
+@timeout(3)
+def scipyintegrate(expn):
+    try:
+        DI = integrate.quad(expn, 0, 1, epsrel = 1e-6, epsabs = 0)
+        return DI
+    except:
+        raise RuntimeError
+    
 
 @timeout(6)
 def generate_histogram(f, N = 1000, K = 200, interval = (0,1)):
   try: 
     x = sympy.Symbol('x')
-    F = sympy.integrate(f, x)
-    DI = F.subs(x, interval[1]) - F.subs(x, interval[0]).evalf(8)
-    f_n = sympy.simplify(f/DI).evalf(8)
+    lamb_expn = sympy.lambdify(x, f)
+    DI = scipyintegrate(lamb_expn)
+
+    f_n = sympy.simplify(f/DI[0]).evalf(8)
     if (f_n == 1):
         raise RuntimeWarning("Constant function")
     bins = K
@@ -292,11 +299,11 @@ def generate_histogram(f, N = 1000, K = 200, interval = (0,1)):
       if not((Sum_count - 3) <= ret.sum() <= (Sum_count + 3)):
         raise RuntimeWarning("Sum Count not satisfied")
 
-    #   if np.isclose(np.min(ret), np.max(ret)):
-    #     print("Found almost constant function.")
-    #     raise RuntimeWarning("Found almost constant function.")
+      if np.isclose(np.min(ret), np.max(ret)):
+        print("Found almost constant function.")
+        raise RuntimeWarning("Found almost constant function.")
 
-      return f_n, ret
+      return f, ret
     
     else :
       raise RuntimeWarning("Function not positive in the range")
@@ -308,7 +315,6 @@ def generate_histogram(f, N = 1000, K = 200, interval = (0,1)):
 def generate_random_expression(
     rng: np.random.Generator,
     n_points: int,
-    sampled_points_range: Tuple[float, float],
     max_num_ops: int,
     variables=None,
 ):
@@ -316,35 +322,6 @@ def generate_random_expression(
         variables = ["x"]
     gen = ExpressionGenerator(max_num_ops, rng, variables)
     tokenizer = GeneralTermTokenizer()
-
-    def sample_points(func):
-        num_variables = len(variables)
-        for left, right in generate_all_possible_ranges(
-            num_variables, sampled_points_range[0], sampled_points_range[1]
-        ):
-            for _ in range(4):
-                try:
-                    x = gen.rng.uniform(left, right, (n_points, num_variables))
-                    y = evaluate_points(func, x)
-
-                    if np.any(np.isnan(y)) or np.any(np.isinf(y)):
-                        raise RuntimeWarning("Is nan or inf!")
-
-                    if np.any(np.abs(y) > 1e7):
-                        raise RuntimeWarning("Too large or too small")
-
-                    if np.any(np.iscomplex(y)):
-                        raise RuntimeWarning("Complex")
-
-                    if not np.all(np.isfinite(y)):
-                        raise RuntimeWarning("Not finite")
-
-                    res = np.concatenate((x, np.reshape(y, (-1, 1))), axis=1)
-                    return res
-                except RuntimeWarning:
-                    continue
-
-        raise RuntimeError("No range found")
 
     warnings.filterwarnings("error")
 
@@ -380,13 +357,12 @@ def generate_random_expression(
                     raise RuntimeWarning("Coefficient is too small.")
                 
                 # Print data while it's generated
-                
+
                 # print("Expression is : ", sympy_res)
                 # print("Histogram float counts in bins : ", ret)
                 # print("Sum : ", sum(ret))
                 # print("Histogram(Poisson RVS) : ", ret_rvs)
                 # print("Sum : ", sum(ret_rvs))
-                # print()
 
                 return {
                     "points": ret_rvs,
@@ -420,7 +396,7 @@ def generate_random_expression(
 
 if __name__ == "__main__":
     generator = generate_random_expression(
-        np.random.default_rng(), 200, (-5, 5), 10, ["x"]
+        np.random.default_rng(), 200, 10, ["x"]
     )
     now = time.time()
     for i in range(1000):
