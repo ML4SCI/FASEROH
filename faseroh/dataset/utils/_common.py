@@ -10,38 +10,6 @@ from typing import Tuple
 import numpy as np
 
 
-def find_furtherest_points(points: np.array):
-    pairwise_dist = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=-1)
-    indexes = np.unravel_index(np.argmax(pairwise_dist, axis=None), pairwise_dist.shape)
-    return points[list(indexes)], np.max(pairwise_dist)
-
-
-def generate_all_possible_ranges(num_variables: int, left: float, right: float):
-    """
-    Returns all possible ranges from the largest to the small
-    :param num_variables: number of variables
-    :param left: left barrier
-    :param right: right barrier
-    :return: all ranges
-    """
-    points_ranges = np.array(list(product([left, right, 0], repeat=2 * num_variables)))
-    points_ranges = map(lambda x: (x[:num_variables], x[num_variables:]), points_ranges)
-    points_ranges = list(filter(lambda x: np.all(x[0] < x[1]), points_ranges))
-    return sorted(points_ranges, key=lambda x: (x[0] - x[1]).sum())
-
-
-def generate_all_possible_extrapolation_ranges(
-    old_range: Tuple[float, ...], barrier: float, new_barrier: float
-):
-    new_range = []
-    for value in old_range:
-        if value == barrier:
-            new_range.append(new_barrier)
-        else:
-            new_range.append(value)
-
-    return new_range
-
 
 class TimeoutError(BaseException):
     pass
@@ -79,9 +47,4 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
 
 
 if __name__ == "__main__":
-    new_ranges = generate_all_possible_ranges(1, -5, 5)
-    for n_range in new_ranges:
-        print(n_range)
-        print(generate_all_possible_extrapolation_ranges(n_range[0], -5, -6))
-        print(generate_all_possible_extrapolation_ranges(n_range[1], 5, 6))
         print()
